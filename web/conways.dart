@@ -3,28 +3,15 @@ import 'dart:html';
 Grid grid;
 ParagraphElement debugElement;
 
+String whiteColor = "#ffffff";
+String blackColor = "#000000";
+
 void main() {
   CanvasElement canvas = querySelector("#canvas");
   debugElement = querySelector("#debug_output");
   
   grid = new Grid(10, canvas);
   grid.draw();
-  
-  canvas.onClick.listen(grid.receiveClick);
-}
-
-drawVerticalLine(num initialX, num finalY, CanvasRenderingContext2D context) {
-  context..beginPath()
-         ..moveTo(initialX, 0)
-         ..lineTo(initialX, finalY)
-         ..stroke();
-}
-
-drawHorizontalLine(num initialY, finalX, CanvasRenderingContext2D context) {
-  context..beginPath()
-         ..moveTo(0, initialY)
-         ..lineTo(finalX, initialY)
-         ..stroke();
 }
 
 class Grid {
@@ -32,62 +19,48 @@ class Grid {
   CanvasElement canvas;
   Map _spaces;
   
+  static const num canvasMargin = 1;
+  
   Grid(this.unitSize, this.canvas) {
     _spaces = new Map();
+    
+    for(int i = 0; i < gridWidth; i++) {
+      for(int j = 0; j < gridHeight; j++) {
+        Point gridCoordinate = new Point(i, j);
+        Rectangle spaceFrame = new Rectangle(i*unitSize + canvasMargin, j*unitSize + canvasMargin, unitSize, unitSize);
+        
+        _spaces[gridCoordinate] = new Space(spaceFrame);
+      }
+    }
   }
   
   draw() {
     CanvasRenderingContext2D context = canvas.context2D;
+          
+    context..strokeStyle = blackColor
+           ..lineWidth = 0.5;
     
-    num gridWidth = canvas.width / unitSize;
-    num gridHeight = canvas.height / unitSize;
-    
-    context..lineWidth = 0.3
-           ..strokeStyle = "#000000";
-    
-    context.strokeRect(0, 0, canvas.width, canvas.height);
-    
-    for(int i = 1; i <= gridWidth; i++) {
-      drawVerticalLine(i*unitSize, canvas.height, context);
-    }
-    
-    for(int i = 1; i <= gridHeight; i++) {
-      drawHorizontalLine(i*unitSize, canvas.width, context);
-    }
-    
+    _spaces.forEach((_, V) => (V as Space).draw(context));
   }
   
-  receiveClick(MouseEvent event) {
-    Point position = event.offset;
-    Point gridPosition = new Point(position.x ~/ unitSize, position.y ~/ unitSize);
-    
-    bool isFilled = _spaces[gridPosition];
-    
-    if (isFilled == null) {
-      isFilled = _spaces[gridPosition] = false;
+  num get gridWidth => canvas.width ~/ unitSize;
+  num get gridHeight => canvas.height ~/ unitSize;
+}
+
+class Space {
+  Rectangle frame;
+  bool isFilled;
+  
+  Space(this.frame) : isFilled = false;
+  
+  draw(CanvasRenderingContext2D context) {
+    if (isFilled) {
+      context.fillStyle = blackColor;
+    } else {
+      context.fillStyle = whiteColor;
     }
     
-    fillSpace(gridPosition, isFilled);
-    
-    _spaces[gridPosition] = !isFilled;
-      
-    debugElement.text = gridPosition.toString();   
-  }
-  
-  fillSpace(Point position, bool shouldClear) {
-    CanvasRenderingContext2D context = canvas.context2D;
-    
-    context.fillStyle = shouldClear ? "#ffffff" : "#000000";
-    
-    Rectangle rectToFill = getRectForPosition(position);
-    
-    context.fillRect(rectToFill.left + 0.15, rectToFill.top + 0.15, rectToFill.width - 0.3, rectToFill.height - 0.3);
-  }
-  
-  Rectangle getRectForPosition(Point position) {
-    num x = position.x * unitSize;
-    num y = position.y * unitSize;
-    
-    return new Rectangle(x, y, unitSize, unitSize);
+    context..strokeRect(frame.left, frame.top, frame.width, frame.height)
+           ..fillRect(frame.left, frame.top, frame.width, frame.height);
   }
 }
