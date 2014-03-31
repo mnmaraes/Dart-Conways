@@ -43,8 +43,7 @@ class Grid {
     num gridHeight = canvas.height / unitSize;
     
     context..lineWidth = 0.3
-           ..strokeStyle = "#000000"
-           ..fillStyle = "#000000";
+           ..strokeStyle = "#000000";
     
     context.strokeRect(0, 0, canvas.width, canvas.height);
     
@@ -64,29 +63,25 @@ class Grid {
     
     bool isFilled = _spaces[gridPosition];
     
-    if (isFilled == null || !isFilled ){
-      fillSpace(gridPosition);
-    } else {
-      clearSpace(gridPosition);
+    if (isFilled == null) {
+      isFilled = _spaces[gridPosition] = false;
     }
+    
+    fillSpace(gridPosition, isFilled);
+    
+    _spaces[gridPosition] = !isFilled;
       
     debugElement.text = gridPosition.toString();   
   }
   
-  fillSpace(Point position) {
+  fillSpace(Point position, bool shouldClear) {
     CanvasRenderingContext2D context = canvas.context2D;
+    
+    context.fillStyle = shouldClear ? "#ffffff" : "#000000";
     
     Rectangle rectToFill = getRectForPosition(position);
     
-    context.fillRect(rectToFill.left, rectToFill.top, rectToFill.width, rectToFill.height);
-  }
-  
-  clearSpace(Point position) {
-    CanvasRenderingContext2D context = canvas.context2D;
-        
-    Rectangle rectToFill = getRectForPosition(position);
-        
-    context.clearRect(rectToFill.left, rectToFill.top, rectToFill.width, rectToFill.height);
+    context.fillRect(rectToFill.left + 0.15, rectToFill.top + 0.15, rectToFill.width - 0.3, rectToFill.height - 0.3);
   }
   
   Rectangle getRectForPosition(Point position) {
