@@ -1,4 +1,5 @@
 import 'dart:html';
+import 'dart:async' show Future;
 
 Grid grid;
 ParagraphElement debugElement;
@@ -12,6 +13,9 @@ void main() {
   
   grid = new Grid(10, canvas);
   grid.start();
+  
+  querySelector("#clear-button").onClick.listen((_) => grid.clear());
+  querySelector("#start-button").onClick.listen((_) => grid.play());
 }
 
 class Grid {
@@ -80,13 +84,55 @@ class Grid {
     
     Space space = _spaces[position];
     
-    if(space != null){
-      space.fill(canvas.context2D);
+    if(space != null && !event.altKey){
+      space.fill();
+    } else if (space != null) {
+      space.clear();
     }
   
     eventsFired++;
     
     draw();
+  }
+  
+  clear(){
+    _spaces.forEach((_, V) => (V as Space).clear());
+    draw();
+  }
+  
+  play(){
+    _spaces.forEach((K, V) =>
+      (V as Space).checkIfFills(getLivingNeighbors(K)));
+    
+    int totalTicks = 0;
+    
+    requestUpdate() => _spaces.forEach((_,V) => totalTicks += (V as Space).tick());
+    
+    Future update = new Future.delayed(new Duration(milliseconds: 300), requestUpdate);
+    
+    update.then((_) {
+      draw();
+      if(totalTicks != 0) {
+        play();
+      }
+    });
+  }
+  
+  num getLivingNeighbors(Point p) {
+    num livingNeighbors = 0;
+    
+    for(int i = -1; i < 2; i++){
+      for(int j = -1; j < 2; j++) {
+        if(i == 0 && j == 0) continue;
+        
+        Space space = _spaces[new Point(p.x + i, p.y + j)];
+        if (space != null && space.isFilled) {
+            livingNeighbors++;
+        }
+      }
+    }
+    
+    return livingNeighbors;
   }
   
   num get gridWidth => canvas.width ~/ unitSize;
@@ -96,6 +142,7 @@ class Grid {
 class Space {
   Rectangle frame;
   bool isFilled = false;
+  bool shouldFill;
   
   Space(this.frame);
   
@@ -110,7 +157,23 @@ class Space {
            ..fillRect(frame.left, frame.top, frame.width, frame.height);
   }
   
-  fill(CanvasRenderingContext2D context) {
-    isFilled = true;
+  checkIfFills(num livingNeighbors) {
+    if(isFilled){
+      shouldFill = livingNeighbors < 2 || livingNeighbors > 3 ? false : true;
+    } else {
+      shouldFill = livingNeighbors == 3 ? true : false;
+    }
   }
+  
+  num tick() {
+    if(isFilled == shouldFill) {
+      return 0;
+    }
+    
+    isFilled = shouldFill;
+    return 1;
+  }
+  
+  fill() => isFilled = true;
+  clear() => isFilled = false;
 }
