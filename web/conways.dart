@@ -2,28 +2,52 @@ import 'dart:html';
 import 'dart:async' show Future;
 
 Grid grid;
-ParagraphElement debugElement;
+ParagraphElement generationCounter;
 
 String whiteColor = "#ffffff";
 String blackColor = "#000000";
 
 void main() {
   CanvasElement canvas = querySelector("#canvas");
-  debugElement = querySelector("#debug_output");
+  generationCounter = querySelector("#generation_output");
   
   grid = new Grid(10, canvas);
   grid.start();
   
-  querySelector("#clear-button").onClick.listen((_) => grid.clear());
-  querySelector("#start-button").onClick.listen((_) => grid.play());
+  ButtonElement startButton = querySelector("#start-button");
+  ButtonElement clearButton = querySelector("#clear-button");
+  InputElement generationElement = querySelector("#generation-time");
+  
+  generationElement.value = "300";
+  
+  clearButton.onClick.listen((_) => grid.clear());
+  
+  startButton.onClick.listen((_){
+    if (grid.isPlaying) {
+      startButton.text = "Start";
+      clearButton.disabled = false;
+    } else {
+      startButton.text = "Stop";
+      clearButton.disabled = true;
+    }
+    
+    grid.togglePlay(); 
+  });
+  
+  generationElement.onChange.listen((_) => 
+      grid.generationTime = int.parse(generationElement.value));
 }
 
 class Grid {
   num unitSize;
   CanvasElement canvas;
+  
   Map _spaces;
+  num generationTime = 300;
+  num currentGeneration = 0;
   
   bool isResponding = false;
+  bool isPlaying = false;
   
   int eventsFired = 0;
   
@@ -80,8 +104,6 @@ class Grid {
   respondToMouseEvent(MouseEvent event) {
     Point position = new Point(event.offset.x ~/ unitSize, event.offset.y ~/ unitSize);
     
-    debugElement.text = eventsFired.toString() + " Last on: " + position.toString();
-    
     Space space = _spaces[position];
     
     if(space != null && !event.altKey){
@@ -100,19 +122,32 @@ class Grid {
     draw();
   }
   
+  togglePlay() {
+    if(isPlaying) {
+      isPlaying = false;
+    } else {
+      isPlaying = true;
+      currentGeneration = 0;
+      play();
+    }
+  }
+  
   play(){
     _spaces.forEach((K, V) =>
       (V as Space).checkIfFills(getLivingNeighbors(K)));
     
     int totalTicks = 0;
     
+    currentGeneration++;
+    generationCounter.text = "Game at generation " + currentGeneration.toString();
+    
     requestUpdate() => _spaces.forEach((_,V) => totalTicks += (V as Space).tick());
     
-    Future update = new Future.delayed(new Duration(milliseconds: 300), requestUpdate);
+    Future update = new Future.delayed(new Duration(milliseconds: generationTime), requestUpdate);
     
     update.then((_) {
       draw();
-      if(totalTicks != 0) {
+      if(totalTicks != 0 && isPlaying) {
         play();
       }
     });
