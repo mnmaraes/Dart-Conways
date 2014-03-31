@@ -11,13 +11,17 @@ void main() {
   debugElement = querySelector("#debug_output");
   
   grid = new Grid(10, canvas);
-  grid.draw();
+  grid.start();
 }
 
 class Grid {
   num unitSize;
   CanvasElement canvas;
   Map _spaces;
+  
+  bool isResponding = false;
+  
+  int eventsFired = 0;
   
   static const num canvasMargin = 1;
   
@@ -34,13 +38,55 @@ class Grid {
     }
   }
   
+  start() {
+    draw();
+    
+    responderBegin(MouseEvent event) => isResponding = true;
+    responderEnd(MouseEvent event) => isResponding = false;
+    
+    Point pointOfLastEvent = new Point(-1, -1);
+    
+    canvas..onMouseDown.listen(responderBegin)
+          ..onMouseLeave.listen(responderEnd)
+          ..onMouseUp.listen(responderEnd)
+          ..onClick.listen(respondToMouseEvent)
+          ..onMouseMove.listen((MouseEvent event) {
+            Point position = new Point(event.offset.x ~/ unitSize, event.offset.y ~/ unitSize);
+            
+            bool pointsAreEqual = position == pointOfLastEvent;
+            if(isResponding && !pointsAreEqual)
+              respondToMouseEvent(event);
+            
+            pointOfLastEvent = position;
+          });
+  }
+  
   draw() {
     CanvasRenderingContext2D context = canvas.context2D;
           
     context..strokeStyle = blackColor
-           ..lineWidth = 0.5;
+           ..lineWidth = 0.5
+           ..clearRect(0, 0, canvas.width, canvas.height);
     
     _spaces.forEach((_, V) => (V as Space).draw(context));
+  }
+  
+  
+  
+  respondToMouseEvent(MouseEvent event) {
+    Point position = new Point(event.offset.x ~/ unitSize, event.offset.y ~/ unitSize);
+    
+    debugElement.text = eventsFired.toString() + " Last on: " + position.toString();
+    
+    Space space = _spaces[position];
+    
+    if(space != null){
+      space.fill(canvas.context2D);
+    }
+  
+    eventsFired++;
+    
+    draw();
   }
   
   num get gridWidth => canvas.width ~/ unitSize;
@@ -49,9 +95,9 @@ class Grid {
 
 class Space {
   Rectangle frame;
-  bool isFilled;
+  bool isFilled = false;
   
-  Space(this.frame) : isFilled = false;
+  Space(this.frame);
   
   draw(CanvasRenderingContext2D context) {
     if (isFilled) {
@@ -62,5 +108,9 @@ class Space {
     
     context..strokeRect(frame.left, frame.top, frame.width, frame.height)
            ..fillRect(frame.left, frame.top, frame.width, frame.height);
+  }
+  
+  fill(CanvasRenderingContext2D context) {
+    isFilled = true;
   }
 }
